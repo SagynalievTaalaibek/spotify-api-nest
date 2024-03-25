@@ -7,14 +7,17 @@ import {
   Param,
   Post,
   Query,
+  UnprocessableEntityException,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Album, AlbumDocument } from '../schemas/album.schema';
 import { CreateAlbumDto } from './create-album.dto';
+import { TokenAuthGuard } from '../auth/token-auth.guard';
 
 @Controller('albums')
 export class AlbumsController {
@@ -22,22 +25,34 @@ export class AlbumsController {
     @InjectModel(Album.name)
     private albumModel: Model<AlbumDocument>,
   ) {}
+
+  @UseGuards(TokenAuthGuard)
   @Post()
   @UseInterceptors(
     FileInterceptor('image', { dest: './public/uploads/albums' }),
   )
-  create(
+  async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() albumData: CreateAlbumDto,
   ) {
-    const album = new this.albumModel({
-      name: albumData.name,
-      artist: albumData.artist,
-      yearOfIssue: albumData.yearOfIssue,
-      image: file ? '/uploads/albums/' + file.filename : null,
-    });
+    try {
+      const album = new this.albumModel({
+        name: albumData.name,
+        artist: albumData.artist,
+        yearOfIssue: albumData.yearOfIssue,
+        image: file ? '/uploads/albums/' + file.filename : null,
+      });
 
-    return album.save();
+      await album.save();
+
+      return album;
+    } catch (e) {
+      if (e instanceof mongoose.Error.ValidationError) {
+        throw new UnprocessableEntityException(e);
+      }
+
+      throw e;
+    }
   }
 
   @Get()

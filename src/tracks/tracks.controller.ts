@@ -6,29 +6,44 @@ import {
   Param,
   Post,
   Query,
+  UnprocessableEntityException,
+  UseGuards,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Track, TrackDocument } from '../schemas/track.schema';
 import { CreateTrackDto } from './create-track.dto';
+import { TokenAuthGuard } from '../auth/token-auth.guard';
 
 @Controller('tracks')
 export class TracksController {
+  @UseGuards(TokenAuthGuard)
+  @Post()
+  async create(@Body() trackData: CreateTrackDto) {
+    try {
+      const track = new this.trackModel({
+        name: trackData.name,
+        album: trackData.album,
+        duration: trackData.duration,
+        albumTrackNumber: trackData.albumTrackNumber,
+      });
+
+      await track.save();
+
+      return track;
+    } catch (e) {
+      if (e instanceof mongoose.Error.ValidationError) {
+        throw new UnprocessableEntityException(e);
+      }
+
+      throw e;
+    }
+  }
+
   constructor(
     @InjectModel(Track.name)
     private trackModel: Model<TrackDocument>,
   ) {}
-  @Post()
-  create(@Body() trackData: CreateTrackDto) {
-    const track = new this.trackModel({
-      name: trackData.name,
-      album: trackData.album,
-      duration: trackData.duration,
-      albumTrackNumber: trackData.albumTrackNumber,
-    });
-
-    return track.save();
-  }
 
   @Get()
   getAll(@Query('albumId') albumId: string) {

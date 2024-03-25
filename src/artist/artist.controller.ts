@@ -6,14 +6,17 @@ import {
   NotFoundException,
   Param,
   Post,
+  UnprocessableEntityException,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Artist, ArtistDocument } from '../schemas/artist.schema';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateArtistDto } from './create-artist.dto';
+import { TokenAuthGuard } from '../auth/token-auth.guard';
 
 @Controller('artists')
 export class ArtistController {
@@ -21,21 +24,33 @@ export class ArtistController {
     @InjectModel(Artist.name)
     private artistModel: Model<ArtistDocument>,
   ) {}
+
+  @UseGuards(TokenAuthGuard)
   @Post()
   @UseInterceptors(
     FileInterceptor('photo', { dest: './public/uploads/artists' }),
   )
-  create(
+  async create(
     @UploadedFile() file: Express.Multer.File,
     @Body() artistData: CreateArtistDto,
   ) {
-    const artist = new this.artistModel({
-      name: artistData.name,
-      description: artistData.description,
-      photo: file ? '/uploads/artists/' + file.filename : null,
-    });
+    try {
+      const artist = new this.artistModel({
+        name: artistData.name,
+        description: artistData.description,
+        photo: file ? '/uploads/artists/' + file.filename : null,
+      });
 
-    return artist.save();
+      await artist.save();
+
+      return artist;
+    } catch (e) {
+      if (e instanceof mongoose.Error.ValidationError) {
+        throw new UnprocessableEntityException(e);
+      }
+
+      throw e;
+    }
   }
 
   @Get()
