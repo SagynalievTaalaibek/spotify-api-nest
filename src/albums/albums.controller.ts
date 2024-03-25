@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Query,
+  SetMetadata,
   UnprocessableEntityException,
   UploadedFile,
   UseGuards,
@@ -18,6 +19,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Album, AlbumDocument } from '../schemas/album.schema';
 import { CreateAlbumDto } from './create-album.dto';
 import { TokenAuthGuard } from '../auth/token-auth.guard';
+import { RoleGuard } from '../auth/role.guard';
 
 @Controller('albums')
 export class AlbumsController {
@@ -75,6 +77,8 @@ export class AlbumsController {
     return album;
   }
 
+  @SetMetadata('roles', ['admin'])
+  @UseGuards(TokenAuthGuard, RoleGuard)
   @Delete(':id')
   deleteArtist(@Param('id') id: string) {
     return this.albumModel.findByIdAndDelete(id);

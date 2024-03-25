@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  SetMetadata,
   UnprocessableEntityException,
   UploadedFile,
   UseGuards,
@@ -17,6 +18,7 @@ import mongoose, { Model } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateArtistDto } from './create-artist.dto';
 import { TokenAuthGuard } from '../auth/token-auth.guard';
+import { RoleGuard } from '../auth/role.guard';
 
 @Controller('artists')
 export class ArtistController {
@@ -69,6 +71,8 @@ export class ArtistController {
     return artist;
   }
 
+  @SetMetadata('roles', ['admin'])
+  @UseGuards(TokenAuthGuard, RoleGuard)
   @Delete(':id')
   deleteArtist(@Param('id') id: string) {
     return this.artistModel.findByIdAndDelete(id);

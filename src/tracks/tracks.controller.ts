@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Query,
+  SetMetadata,
   UnprocessableEntityException,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import mongoose, { Model } from 'mongoose';
 import { Track, TrackDocument } from '../schemas/track.schema';
 import { CreateTrackDto } from './create-track.dto';
 import { TokenAuthGuard } from '../auth/token-auth.guard';
+import { RoleGuard } from '../auth/role.guard';
 
 @Controller('tracks')
 export class TracksController {
@@ -57,6 +59,8 @@ export class TracksController {
     return this.trackModel.find().populate('album');
   }
 
+  @SetMetadata('roles', ['admin'])
+  @UseGuards(TokenAuthGuard, RoleGuard)
   @Delete(':id')
   deleteArtist(@Param('id') id: string) {
     return this.trackModel.findByIdAndDelete(id);
